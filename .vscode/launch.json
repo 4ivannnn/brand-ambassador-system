@@ -1,0 +1,34 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "API: run FastAPI (debug)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "uvicorn",
+      "args": ["app.main:app", "--reload"],
+      "envFile": "${workspaceFolder}/.env",
+      "justMyCode": true
+    },
+    {
+      "name": "ML: train model",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "app.ml.train",
+      "justMyCode": true
+    },
+    {
+      "name": "DB: seed starter data",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "scripts.seed",
+      "envFile": "${workspaceFolder}/.env"
+    },
+    {
+      "name": "Demo: walk through the workflow",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "scripts.demo_flow"
+    }
+  ]
+}

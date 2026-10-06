@@ -1,0 +1,19 @@
+{
+  "python.terminal.activateEnvironment": true,
+  "python.testing.pytestEnabled": true,
+  "python.testing.pytestArgs": ["tests"],
+  "python.envFile": "${workspaceFolder}/.env",
+  "editor.formatOnSave": false,
+  "sqltools.connections": [
+    {
+      "name": "brand_ambassador (local)",
+      "driver": "PostgreSQL",
+      "server": "localhost",
+      "port": 5432,
+      "database": "brand_ambassador",
+      "username": "postgres",
+      "askForPassword": true
+    }
+  ],
+  "python-envs.defaultEnvManager": "ms-python.python:system"
+}

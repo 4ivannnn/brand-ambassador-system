@@ -1,0 +1,9 @@
+.venv/
+.uv-cache/
+.docker-config/
+__pycache__/
+*.pyc
+.env
+models/*.joblib
+models/*.json
+.pytest_cache/

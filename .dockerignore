@@ -1,0 +1,10 @@
+.git
+.venv
+.uv-cache
+.docker-config
+__pycache__
+*.py[cod]
+.env
+.pytest_cache
+frontend/node_modules
+frontend/dist
