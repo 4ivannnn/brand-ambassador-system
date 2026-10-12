@@ -17,7 +17,31 @@ SLOT_TIMES = [(time(9), time(12)), (time(12), time(15)), (time(15), time(18))]
 
 def main():
     with SessionLocal() as db:
-        if db.scalar(select(User).where(User.email == "manager@example.com")):
+        existing_manager = db.scalar(select(User).where(User.email == "manager@example.com"))
+        if existing_manager:
+            # Keep demo catalog additions available when bootstrap is rerun on
+            # a database that already has its starter accounts.
+            supplier = db.scalar(select(Supplier).where(Supplier.email == "supplier@example.com"))
+            if supplier:
+                old_brand = db.scalar(select(Brand).where(
+                    Brand.supplier_id == supplier.supplier_id,
+                    Brand.brand_name == "Brand 2",
+                ))
+                renamed_brand = db.scalar(select(Brand).where(
+                    Brand.supplier_id == supplier.supplier_id,
+                    Brand.brand_name == "Ukulima Beverages",
+                ))
+                if old_brand:
+                    old_brand.brand_name = "Ukulima Beverages"
+                    db.commit()
+                    print('Renamed demo brand to "Ukulima Beverages".')
+                    return
+                if not renamed_brand:
+                    db.add(Brand(supplier_id=supplier.supplier_id, brand_name="Ukulima Beverages",
+                                 category="Beverages"))
+                    db.commit()
+                    print('Added missing demo brand "Ukulima Beverages".')
+                    return
             print("Seed data already present - nothing to do.")
             return
 
@@ -50,7 +74,10 @@ def main():
         db.flush()
         db.add(User(supplier_id=supplier.supplier_id, role="SUPPLIER", full_name="Demo Supplier",
                     email="supplier@example.com", phone="0712345678", password_hash=hash_password(PASSWORD)))
-        db.add(Brand(supplier_id=supplier.supplier_id, brand_name="FizzUp", category="Beverages"))
+        db.add_all([
+            Brand(supplier_id=supplier.supplier_id, brand_name="FizzUp", category="Beverages"),
+            Brand(supplier_id=supplier.supplier_id, brand_name="Ukulima Beverages", category="Beverages"),
+        ])
         db.commit()
 
         print("Seed complete. Logins (password for all: %s):" % PASSWORD)
