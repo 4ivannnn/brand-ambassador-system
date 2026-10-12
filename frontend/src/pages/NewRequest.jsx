@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ApiError, createRequest, listBrands, listSlots, listStores } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
@@ -18,6 +18,17 @@ export default function NewRequest() {
   const [ambassadors, setAmbassadors] = useState([{ ...BLANK_AMBASSADOR }]);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+
+  const brandGroups = useMemo(() => {
+    const sorted = [...brands].sort((a, b) =>
+      a.category.localeCompare(b.category, undefined, { sensitivity: "base" }) ||
+      a.brand_name.localeCompare(b.brand_name, undefined, { sensitivity: "base" })
+    );
+    return sorted.reduce((groups, brand) => {
+      (groups[brand.category] ||= []).push(brand);
+      return groups;
+    }, {});
+  }, [brands]);
 
   useEffect(() => {
     listBrands(token).then(setBrands).catch((e) => setError(e.message));
@@ -94,8 +105,12 @@ export default function NewRequest() {
               <label htmlFor="brand">Brand</label>
               <select id="brand" required value={brandId} onChange={(e) => setBrandId(e.target.value)}>
                 <option value="" disabled>Choose a brand</option>
-                {brands.map((b) => (
-                  <option key={b.brand_id} value={b.brand_id}>{b.brand_name} ({b.category})</option>
+                {Object.entries(brandGroups).map(([category, categoryBrands]) => (
+                  <optgroup key={category} label={category}>
+                    {categoryBrands.map((brand) => (
+                      <option key={brand.brand_id} value={brand.brand_id}>{brand.brand_name}</option>
+                    ))}
+                  </optgroup>
                 ))}
               </select>
             </div>
