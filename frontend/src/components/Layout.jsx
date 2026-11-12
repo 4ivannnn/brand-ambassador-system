@@ -14,7 +14,7 @@ const NAV = {
     { to: "/notifications", label: "Notifications" },
   ],
   STORE_MANAGER: [
-    { to: "/", label: "Upcoming activations", end: true },
+    { to: "/", label: "Activation history", end: true },
     { to: "/notifications", label: "Notifications" },
   ],
 };

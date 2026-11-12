@@ -20,13 +20,18 @@ const FILTERS = {
     { value: "APPROVED", label: "Approved" },
     { value: "REJECTED", label: "Rejected" },
   ],
-  STORE_MANAGER: [{ value: "", label: "Upcoming" }],
+  STORE_MANAGER: [
+    { value: "", label: "All decisions" },
+    { value: "SLOT_BOOKED", label: "Approved and booked" },
+    { value: "COMPLETED", label: "Completed" },
+    { value: "REJECTED", label: "Denied" },
+  ],
 };
 
 const HEADS = {
   SUPPLIER: { title: "Your requests", blurb: "Everything you've submitted, from draft through to a booked slot." },
   APPROVING_MANAGER: { title: "Activation requests", blurb: "Review what the qualification engine has routed to you." },
-  STORE_MANAGER: { title: "Upcoming activations", blurb: "Approved activations booked into your store's slots." },
+  STORE_MANAGER: { title: "Activation history", blurb: "Review approved, completed, and denied requests for your stores." },
 };
 
 function fmtDate(d) {
@@ -87,7 +92,11 @@ export default function RequestsList() {
                 <br />
                 <span className="meta">{r.ambassador_count} ambassador(s) · {r.start_time?.slice(0, 5)}–{r.end_time?.slice(0, 5)}</span>
               </span>
-              <StatusBadge status={r.status} />
+              {role === "STORE_MANAGER" ? (
+                <span className={`stamp ${r.status === "REJECTED" ? "rejected" : "approved"}`}>
+                  {r.status === "REJECTED" ? "Denied" : r.status === "COMPLETED" ? "Approved · completed" : "Approved"}
+                </span>
+              ) : <StatusBadge status={r.status} />}
               <span className="meta">&rsaquo;</span>
             </Link>
           ))}

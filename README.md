@@ -80,6 +80,7 @@ The React front-end lives in `frontend/` and calls the REST API below.
    automatically when it initializes a new database volume.
 8. **Prepare the demo** (starter data and trained model):
    `python -m scripts.bootstrap`. You can run this again safely.
+   The request calendar maintains daily slots from two years ago through two years ahead. Historical dates remain visible for reference but cannot be booked.
 9. **Start the API:** press **F5** and choose *"API: run FastAPI (debug)"*
     (or run `uvicorn app.main:app --reload`). Open http://127.0.0.1:8000/docs
 10. **Try the whole workflow** in a second terminal: `python -m scripts.demo_flow`
@@ -107,13 +108,15 @@ SELECT request_id, fraud_probability, fit_score, recommendation, feedback FROM a
 ## 3. How a request flows (matches the diagrams)
 1. Supplier registers, adds a brand, picks a slot and lists ambassadors → `POST /requests` (status **DRAFT**).
 2. `POST /requests/{id}/submit`
-   * missing/invalid data (required fields, phone/e-mail format, ambassador count ≠ names listed, past date) → **422** with the list of errors; request stays a draft;
+   * missing/invalid data (required fields, phone/e-mail format, ambassador count ≠ names listed, today or past date) → **422** with the list of errors; request stays a draft;
    * otherwise **SUBMITTED → UNDER_VALIDATION**; the Qualification Engine scores authenticity, fraud risk and fit;
    * store-limit and competing-brand checks run; a conflict or a confident fraud signal → **FLAGGED_FOR_REVIEW** (with reasons and, for conflicts, alternative slots); otherwise **PENDING_APPROVAL**.
 3. Approving manager: `POST /requests/{id}/decision` (`APPROVE` / `REJECT` + mandatory reason), or `/override` for a flagged request.
    Approval re-checks conflicts under a row lock, then **APPROVED → SLOT_BOOKED** and notifies the supplier and the store manager.
 4. After the activation date: `POST /requests/{id}/complete` → **COMPLETED**.
 Every step is written to `audit_logs`; every message to `notifications` (plus e-mail if SMTP is configured).
+
+Store managers can view approved, completed, and rejected requests for stores assigned to them from the **Activation history** page. Requests at draft or pending-review stages are not shown there.
 
 ## 4. The machine-learning part
 * **Fraud / authenticity model** (RandomForest) → `detect_fraud()` / `check_authenticity()`: duplicate or reused contacts, repeated submissions, fake-looking follower/engagement figures, very new accounts, supplier history.

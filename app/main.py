@@ -5,6 +5,7 @@ Docs:  http://127.0.0.1:8000/docs   (interactive - you can test every endpoint h
 """
 import logging
 from contextlib import asynccontextmanager
+from datetime import date
 
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -14,6 +15,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app import config, security
+from app.booking_calendar import booking_window
 from app import state_machine as sm
 from app.database import get_db
 from app.ml.qualification_engine import QualificationEngine
@@ -78,7 +80,12 @@ def get_engine(request: Request) -> QualificationEngine:
 
 def load_request(db: Session, request_id: int, user: User) -> ActivationRequest:
     req = db.get(ActivationRequest, request_id)
-    if not req or (user.role == "SUPPLIER" and req.supplier_id != user.supplier_id):
+    if (not req
+            or (user.role == "SUPPLIER" and req.supplier_id != user.supplier_id)
+            or (user.role == "STORE_MANAGER" and db.scalar(
+                select(Store.store_id).where(Store.store_id == req.store_id,
+                                             Store.manager_user_id == user.user_id)
+            ) is None)):
         raise HTTPException(404, "Request not found.")
     return req
 
@@ -115,10 +122,20 @@ def list_stores(_: User = Depends(current_user), db: Session = Depends(get_db)):
 
 
 @app.get("/stores/{store_id}/slots", response_model=list[SlotOut], tags=["Stores"])
-def list_slots(store_id: int, only_open: bool = True, _: User = Depends(current_user),
+def list_slots(store_id: int, only_open: bool = True, start_date: date | None = None,
+               end_date: date | None = None, _: User = Depends(current_user),
                db: Session = Depends(get_db)):
-    """Use case 'Select Time Slot' - the calendar shows these."""
-    q = select(StoreSlot).where(StoreSlot.store_id == store_id).order_by(StoreSlot.slot_date, StoreSlot.start_time)
+    """List calendar slots within the rolling two-years-back/two-years-ahead window."""
+    today = date.today()
+    earliest, latest = booking_window(today)
+    start_date = start_date or earliest
+    end_date = end_date or latest
+    if start_date < earliest or end_date > latest or start_date > end_date:
+        raise HTTPException(422, f"Choose dates between {earliest.isoformat()} and {latest.isoformat()}.")
+    q = (select(StoreSlot).where(StoreSlot.store_id == store_id,
+                                 StoreSlot.slot_date >= start_date,
+                                 StoreSlot.slot_date <= end_date)
+         .order_by(StoreSlot.slot_date, StoreSlot.start_time))
     if only_open:
         q = q.where(StoreSlot.status == "OPEN")
     return db.scalars(q).all()
@@ -179,10 +196,10 @@ def list_requests(status: str | None = None, user: User = Depends(current_user),
     q = select(ActivationRequest).order_by(ActivationRequest.request_id.desc())
     if user.role == "SUPPLIER":
         q = q.where(ActivationRequest.supplier_id == user.supplier_id)
-    elif user.role == "STORE_MANAGER":     # only approved activations at their own stores
+    elif user.role == "STORE_MANAGER":     # decision history for their own stores
         my_stores = select(Store.store_id).where(Store.manager_user_id == user.user_id)
         q = q.where(ActivationRequest.store_id.in_(my_stores),
-                    ActivationRequest.status.in_(sm.APPROVED_SET))
+                    ActivationRequest.status.in_(sm.DECIDED_STATUSES))
     if status:
         q = q.where(ActivationRequest.status == status)
     return db.scalars(q).all()

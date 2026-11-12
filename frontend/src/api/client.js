@@ -45,8 +45,11 @@ export const login = (body) => request("/auth/login", { method: "POST", body });
 
 // ---- reference data ----------------------------------------------------
 export const listStores = (token) => request("/stores", { token });
-export const listSlots = (storeId, token, onlyOpen = true) =>
-  request(`/stores/${storeId}/slots`, { token, params: { only_open: onlyOpen } });
+export const listSlots = (storeId, token, onlyOpen = true, startDate, endDate) =>
+  request(`/stores/${storeId}/slots`, {
+    token,
+    params: { only_open: onlyOpen, start_date: startDate, end_date: endDate },
+  });
 
 export const listBrands = (token) => request("/brands", { token });
 export const addBrand = (body, token) => request("/brands", { method: "POST", body, token });

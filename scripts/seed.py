@@ -1,4 +1,4 @@
-"""Insert starter data: 1 approving manager, 1 store manager, 3 stores, 14 days of slots, 1 demo supplier.
+"""Insert starter data and maintain a four-year booking calendar.
 
     python -m scripts.seed
 """
@@ -6,8 +6,9 @@ from datetime import date, time, timedelta
 
 from sqlalchemy import select
 
+from app.booking_calendar import booking_window
 from app.database import SessionLocal
-from app.models import Brand, Store, StoreSlot, Supplier, User
+from app.models import ActivationRequest, Brand, Store, StoreSlot, Supplier, User
 from app.security import hash_password
 
 PASSWORD = "Password123!"          # demo only - change for anything real
@@ -15,12 +16,37 @@ PASSWORD = "Password123!"          # demo only - change for anything real
 SLOT_TIMES = [(time(9), time(12)), (time(12), time(15)), (time(15), time(18))]
 
 
+def ensure_calendar_slots(db, stores, today: date | None = None) -> int:
+    today = today or date.today()
+    first_day, last_day = booking_window(today)
+    existing = db.scalars(select(StoreSlot).where(
+        StoreSlot.slot_date >= first_day,
+        StoreSlot.slot_date <= last_day,
+    )).all()
+    existing_keys = {(slot.store_id, slot.slot_date, slot.start_time, slot.end_time) for slot in existing}
+    new_slots = []
+    for store in stores:
+        for day_offset in range((last_day - first_day).days + 1):
+            slot_date = first_day + timedelta(days=day_offset)
+            for start, end in SLOT_TIMES:
+                key = (store.store_id, slot_date, start, end)
+                if key not in existing_keys:
+                    new_slots.append(StoreSlot(store_id=store.store_id, slot_date=slot_date,
+                                               start_time=start, end_time=end,
+                                               capacity=store.ambassador_limit))
+    db.add_all(new_slots)
+    return len(new_slots)
+
+
 def main():
     with SessionLocal() as db:
         existing_manager = db.scalar(select(User).where(User.email == "manager@example.com"))
         if existing_manager:
-            # Keep demo catalog additions available when bootstrap is rerun on
-            # a database that already has its starter accounts.
+            # Maintain the rolling calendar when bootstrap runs again.
+            stores = db.scalars(select(Store)).all()
+            changed = ensure_calendar_slots(db, stores) > 0
+
+            # Keep demo catalog additions available on existing databases.
             supplier = db.scalar(select(Supplier).where(Supplier.email == "supplier@example.com"))
             if supplier:
                 old_brand = db.scalar(select(Brand).where(
@@ -32,17 +58,31 @@ def main():
                     Brand.brand_name == "Ukulima Beverages",
                 ))
                 if old_brand:
-                    old_brand.brand_name = "Ukulima Beverages"
-                    db.commit()
-                    print('Renamed demo brand to "Ukulima Beverages".')
-                    return
-                if not renamed_brand:
+                    if renamed_brand:
+                        for request in db.scalars(select(ActivationRequest).where(
+                            ActivationRequest.brand_id == old_brand.brand_id,
+                        )):
+                            request.brand_id = renamed_brand.brand_id
+                        db.delete(old_brand)
+                    else:
+                        old_brand.brand_name = "Ukulima Beverages"
+                    changed = True
+                elif not renamed_brand:
                     db.add(Brand(supplier_id=supplier.supplier_id, brand_name="Ukulima Beverages",
                                  category="Beverages"))
-                    db.commit()
-                    print('Added missing demo brand "Ukulima Beverages".')
-                    return
-            print("Seed data already present - nothing to do.")
+                    changed = True
+                fizzup = db.scalar(select(Brand).where(
+                    Brand.supplier_id == supplier.supplier_id,
+                    Brand.brand_name == "FizzUp",
+                ))
+                if not fizzup:
+                    db.add(Brand(supplier_id=supplier.supplier_id, brand_name="FizzUp", category="Beverages"))
+                    changed = True
+            if changed:
+                db.commit()
+                print("Demo catalog and future slots are ready.")
+            else:
+                print("Seed data already present and current.")
             return
 
         manager = User(role="APPROVING_MANAGER", full_name="Grace Approver", email="manager@example.com",
@@ -63,11 +103,7 @@ def main():
         db.add_all(stores)
         db.flush()
 
-        for store in stores:
-            for offset in range(1, 15):
-                for start, end in SLOT_TIMES:
-                    db.add(StoreSlot(store_id=store.store_id, slot_date=date.today() + timedelta(days=offset),
-                                     start_time=start, end_time=end, capacity=store.ambassador_limit))
+        ensure_calendar_slots(db, stores)
 
         supplier = Supplier(company="Demo Beverages Ltd", contact="0712345678", email="supplier@example.com")
         db.add(supplier)

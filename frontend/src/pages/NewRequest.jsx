@@ -5,6 +5,20 @@ import { useAuth } from "../auth/AuthContext";
 
 const BLANK_AMBASSADOR = { full_name: "", phone: "", email: "", social_handle: "", followers: "", engagement_rate: "", account_age_days: "" };
 
+function toDateInputValue(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function shiftDateByYears(value, years) {
+  const [year, month, day] = value.split("-").map(Number);
+  const targetYear = year + years;
+  const lastDay = new Date(targetYear, month, 0).getDate();
+  return `${targetYear}-${String(month).padStart(2, "0")}-${String(Math.min(day, lastDay)).padStart(2, "0")}`;
+}
+
 export default function NewRequest() {
   const { token } = useAuth();
   const navigate = useNavigate();
@@ -13,6 +27,11 @@ export default function NewRequest() {
   const [stores, setStores] = useState([]);
   const [slots, setSlots] = useState([]);
   const [storeId, setStoreId] = useState("");
+  const [calendarDate, setCalendarDate] = useState(() => {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    return toDateInputValue(tomorrow);
+  });
   const [brandId, setBrandId] = useState("");
   const [slotId, setSlotId] = useState("");
   const [ambassadors, setAmbassadors] = useState([{ ...BLANK_AMBASSADOR }]);
@@ -37,9 +56,11 @@ export default function NewRequest() {
 
   useEffect(() => {
     if (!storeId) return setSlots([]);
-    listSlots(storeId, token).then(setSlots).catch((e) => setError(e.message));
+    listSlots(storeId, token, false, calendarDate, calendarDate)
+      .then(setSlots)
+      .catch((e) => setError(e.message));
     setSlotId("");
-  }, [storeId, token]);
+  }, [storeId, token, calendarDate]);
 
   function updateAmbassador(i, field, value) {
     setAmbassadors((list) => list.map((a, idx) => (idx === i ? { ...a, [field]: value } : a)));
@@ -82,6 +103,9 @@ export default function NewRequest() {
   }
 
   const noBrands = brands.length === 0;
+  const today = toDateInputValue(new Date());
+  const earliestDate = shiftDateByYears(today, -2);
+  const latestDate = shiftDateByYears(today, 2);
 
   return (
     <>
@@ -125,17 +149,33 @@ export default function NewRequest() {
             </div>
           </div>
 
+          <label htmlFor="activation-date">Calendar date</label>
+          <input
+            id="activation-date"
+            type="date"
+            required
+            min={earliestDate}
+            max={latestDate}
+            value={calendarDate}
+            onChange={(event) => {
+              if (event.target.value) setCalendarDate(event.target.value);
+            }}
+          />
+          <p className="meta" style={{ marginTop: "0.4em" }}>
+            Calendar range: {earliestDate} to {latestDate}. Past dates and today are shown for reference and cannot be booked.
+          </p>
+
           <label htmlFor="slot">Time slot</label>
           <select id="slot" required disabled={!storeId} value={slotId} onChange={(e) => setSlotId(e.target.value)}>
-            <option value="" disabled>{storeId ? "Choose an open slot" : "Choose a store first"}</option>
+            <option value="" disabled>{storeId ? "Choose a time slot" : "Choose a store first"}</option>
             {slots.map((s) => (
-              <option key={s.slot_id} value={s.slot_id}>
-                {s.slot_date} · {s.start_time.slice(0, 5)}–{s.end_time.slice(0, 5)} (capacity {s.capacity})
+              <option key={s.slot_id} value={s.slot_id} disabled={s.slot_date <= today || s.status !== "OPEN"}>
+                {s.start_time.slice(0, 5)}–{s.end_time.slice(0, 5)} · {s.status !== "OPEN" ? s.status : s.slot_date <= today ? "Not bookable" : `Capacity ${s.capacity}`}
               </option>
             ))}
           </select>
           {storeId && slots.length === 0 && (
-            <p className="meta" style={{ marginTop: "0.5em" }}>No open slots left at this store.</p>
+            <p className="meta" style={{ marginTop: "0.5em" }}>No time slots are listed for this date.</p>
           )}
         </div>
 

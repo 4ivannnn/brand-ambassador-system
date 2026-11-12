@@ -12,6 +12,7 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from app import rules
+from app.booking_calendar import booking_window
 from app import state_machine as sm
 from app.ml.features import build_features
 from app.ml.qualification_engine import QualificationEngine
@@ -72,7 +73,7 @@ def suggest_alternatives(db: Session, req: ActivationRequest, how_many: int = 3)
     """'Suggest alternative' step of the activity diagram: next open slots with no conflict."""
     slots = db.scalars(
         select(StoreSlot).where(StoreSlot.store_id == req.store_id, StoreSlot.slot_id != req.slot_id,
-                                StoreSlot.slot_date >= date.today(), StoreSlot.status == "OPEN")
+                StoreSlot.slot_date > date.today(), StoreSlot.status == "OPEN")
         .order_by(StoreSlot.slot_date, StoreSlot.start_time).limit(60)).all()
     found = []
     for s in slots:
@@ -155,8 +156,11 @@ def submit_request(db: Session, req: ActivationRequest, user: User, engine: Qual
     errors = rules.validate_submission(
         checks=_checks(req), contact=req.supplier.contact, email=req.supplier.email,
         ambassador_count=req.ambassador_count, ambassadors=_ambassador_dicts(req))
-    if req.activation_date < date.today():
-        errors.append("The activation date is in the past.")
+    earliest_date, latest_date = booking_window()
+    if req.activation_date < earliest_date or req.activation_date > latest_date:
+        errors.append(f"Activation date must be between {earliest_date.isoformat()} and {latest_date.isoformat()}.")
+    if req.activation_date <= date.today():
+        errors.append("The activation date must be at least one day in the future.")
     if errors:   # activity diagram: invalid -> Error back to the supplier (request stays a draft)
         raise WorkflowError("The request is incomplete or invalid.", 422, errors)
 

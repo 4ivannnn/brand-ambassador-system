@@ -1,5 +1,6 @@
 {
   "python.defaultInterpreterPath": "${workspaceFolder}\\.venv\\Scripts\\python.exe",
+  "git.repositoryScanIgnoredFolders": [".pytest_cache", ".venv", ".uv-cache", ".docker-config", "node_modules"],
   "python.terminal.activateEnvironment": true,
   "python.testing.pytestEnabled": true,
   "python.testing.pytestArgs": ["tests"],
@@ -15,5 +16,6 @@
       "username": "postgres",
       "askForPassword": true
     }
-  ]
+  ],
+  "chatgpt.openOnStartup": true
 }
