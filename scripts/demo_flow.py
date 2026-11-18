@@ -103,7 +103,8 @@ active.append({**req, "status": "SLOT_BOOKED"})
 # B ----------------------------------------------------------------------------------
 email = f"rival{uuid.uuid4().hex[:6]}@rival.com"
 tok = c.post("/auth/register", json={"company": "Rival Drinks Ltd", "contact": "0722000000", "email": email,
-                                     "full_name": "Rival Rep", "password": PASSWORD}).json()
+                                     "full_name": "Rival Rep", "gender": "MALE",
+                                     "password": PASSWORD}).json()
 rival = {"Authorization": f"Bearer {tok['access_token']}"}
 r = c.post("/brands", headers=rival, json={"brand_name": "SplashCo", "category": brand["category"]})
 rb = expect(r, 201, "B0 create rival brand")

@@ -3,10 +3,13 @@ import { useAuth } from "../auth/AuthContext";
 
 /** Blocks a route unless logged in, and (optionally) in one of `roles`. */
 export default function RequireAuth({ roles, children }) {
-  const { isAuthenticated, role } = useAuth();
+  const { isAuthenticated, role, gender } = useAuth();
   const location = useLocation();
 
   if (!isAuthenticated) return <Navigate to="/login" state={{ from: location }} replace />;
   if (roles && !roles.includes(role)) return <Navigate to="/" replace />;
+  if (role === "SUPPLIER" && !gender && location.pathname !== "/complete-profile") {
+    return <Navigate to="/complete-profile" state={{ from: location }} replace />;
+  }
   return children;
 }

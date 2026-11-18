@@ -21,8 +21,10 @@ export function AuthProvider({ children }) {
     () => ({
       token: session?.token || null,
       role: session?.role || null,
+      gender: session?.gender || null,
       isAuthenticated: Boolean(session?.token),
-      signIn: ({ access_token, role }) => setSession({ token: access_token, role }),
+      signIn: ({ access_token, role, gender }) => setSession({ token: access_token, role, gender: gender || null }),
+      updateGender: (gender) => setSession((current) => current ? { ...current, gender } : current),
       signOut: () => setSession(null),
     }),
     [session]

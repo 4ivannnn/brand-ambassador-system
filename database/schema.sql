@@ -41,6 +41,7 @@ CREATE TABLE users (
     full_name      VARCHAR(150) NOT NULL,
     email          VARCHAR(255) NOT NULL UNIQUE,      -- also the login name
     phone          VARCHAR(20),
+    gender         VARCHAR(10) CHECK (gender IS NULL OR gender IN ('MALE', 'FEMALE')),
     password_hash  VARCHAR(255) NOT NULL,
     created_at     TIMESTAMPTZ  NOT NULL DEFAULT now(),
     CHECK ((role = 'SUPPLIER') = (supplier_id IS NOT NULL))

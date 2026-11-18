@@ -10,6 +10,8 @@ import RequestDetail from "./pages/RequestDetail";
 import Brands from "./pages/Brands";
 import AuditTrail from "./pages/AuditTrail";
 import Notifications from "./pages/Notifications";
+import Reports from "./pages/Reports";
+import SupplierProfileCompletion from "./pages/SupplierProfileCompletion";
 
 function RedirectIfAuthed({ children }) {
   const { isAuthenticated } = useAuth();
@@ -31,7 +33,16 @@ export default function App() {
               </RequireAuth>
             }
           >
+            <Route
+              path="/complete-profile"
+              element={
+                <RequireAuth roles={["SUPPLIER"]}>
+                  <SupplierProfileCompletion />
+                </RequireAuth>
+              }
+            />
             <Route path="/" element={<RequestsList />} />
+            <Route path="/reports" element={<Reports />} />
             <Route
               path="/requests/new"
               element={

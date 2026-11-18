@@ -4,17 +4,20 @@ import { ROLE_LABEL, useAuth } from "../auth/AuthContext";
 const NAV = {
   SUPPLIER: [
     { to: "/", label: "Requests", end: true },
+    { to: "/reports", label: "Reports" },
     { to: "/requests/new", label: "New request" },
     { to: "/brands", label: "Brands" },
     { to: "/notifications", label: "Notifications" },
   ],
   APPROVING_MANAGER: [
     { to: "/", label: "Requests", end: true },
+    { to: "/reports", label: "Reports" },
     { to: "/audit-trail", label: "Audit trail" },
     { to: "/notifications", label: "Notifications" },
   ],
   STORE_MANAGER: [
     { to: "/", label: "Activation history", end: true },
+    { to: "/reports", label: "Reports" },
     { to: "/notifications", label: "Notifications" },
   ],
 };

@@ -5,13 +5,13 @@ Docs:  http://127.0.0.1:8000/docs   (interactive - you can test every endpoint h
 """
 import logging
 from contextlib import asynccontextmanager
-from datetime import date
+from datetime import date, datetime, timedelta, timezone
 
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from sqlalchemy import select
+from sqlalchemy import case, func, select
 from sqlalchemy.orm import Session
 
 from app import config, security
@@ -22,7 +22,8 @@ from app.ml.qualification_engine import QualificationEngine
 from app.models import (ActivationRequest, AIAssessment, AuditLog, Ambassador, Brand, Notification,
                         Store, StoreSlot, Supplier, User)
 from app.schemas import (AssessmentOut, AuditOut, BrandIn, BrandOut, DecisionIn, LoginIn, NotificationOut, OverrideIn,
-                         RegisterIn, RequestDetailOut, RequestIn, RequestOut, SlotOut, StoreOut, TokenOut)
+                         RegisterIn, RequestDetailOut, RequestIn, RequestOut, SlotOut, StoreOut,
+                         SupplierGenderIn, TokenOut)
 from app.services import workflow
 from app.services.workflow import WorkflowError
 
@@ -101,10 +102,11 @@ def register(body: RegisterIn, db: Session = Depends(get_db)):
     db.add(supplier)
     db.flush()
     user = User(supplier_id=supplier.supplier_id, role="SUPPLIER", full_name=body.full_name,
-                email=body.email, phone=body.contact, password_hash=security.hash_password(body.password))
+                email=body.email, phone=body.contact, gender=body.gender,
+                password_hash=security.hash_password(body.password))
     db.add(user)
     db.commit()
-    return TokenOut(access_token=security.create_token(user.user_id), role=user.role)
+    return TokenOut(access_token=security.create_token(user.user_id), role=user.role, gender=user.gender)
 
 
 @app.post("/auth/login", response_model=TokenOut, tags=["Auth"])
@@ -112,7 +114,16 @@ def login(body: LoginIn, db: Session = Depends(get_db)):
     user = db.scalar(select(User).where(User.email == body.email))
     if not user or not security.verify_password(body.password, user.password_hash):
         raise HTTPException(401, "Incorrect email or password.")
-    return TokenOut(access_token=security.create_token(user.user_id), role=user.role)
+    return TokenOut(access_token=security.create_token(user.user_id), role=user.role, gender=user.gender)
+
+
+@app.patch("/auth/profile/gender", tags=["Auth"])
+def update_supplier_gender(body: SupplierGenderIn, user: User = Depends(require_role("SUPPLIER")),
+                           db: Session = Depends(get_db)):
+    """Finish required gender profile setup for existing supplier accounts."""
+    user.gender = body.gender
+    db.commit()
+    return {"gender": user.gender}
 
 
 # --------------------------------------------------------------------------- reference data
@@ -254,6 +265,88 @@ def complete(request_id: int, user: User = Depends(require_role("APPROVING_MANAG
         raise
     db.commit()
     return result
+
+
+# --------------------------------------------------------------------------- reports
+@app.get("/reports/summary", tags=["Reports"])
+def report_summary(period: str = "90d", user: User = Depends(current_user), db: Session = Depends(get_db)):
+    """Request outcomes for the signed-in user's supplier, stores, or manager view."""
+    period_days = {"30d": 30, "90d": 90, "12m": 365, "all": None}
+    if period not in period_days:
+        raise HTTPException(422, "Choose a report period of 30d, 90d, 12m, or all.")
+
+    scope = []
+    if user.role == "SUPPLIER":
+        scope.append(ActivationRequest.supplier_id == user.supplier_id)
+    elif user.role == "STORE_MANAGER":
+        my_stores = select(Store.store_id).where(Store.manager_user_id == user.user_id)
+        scope.append(ActivationRequest.store_id.in_(my_stores))
+
+    now = datetime.now(timezone.utc)
+    since = now - timedelta(days=period_days[period]) if period_days[period] else None
+    summary_filters = list(scope)
+    if since:
+        summary_filters.append(ActivationRequest.created_at >= since)
+
+    category_expr = case(
+        (ActivationRequest.status.in_(sm.APPROVED_SET), "approved"),
+        (ActivationRequest.status == sm.REJECTED, "rejected"),
+        (ActivationRequest.status == sm.FLAGGED, "flagged"),
+        else_="pending",
+    )
+    counts = {"approved": 0, "rejected": 0, "flagged": 0, "pending": 0}
+    grouped = db.execute(
+        select(category_expr, func.count()).where(*summary_filters).group_by(category_expr)
+    )
+    for category, count in grouped:
+        counts[category] = count
+
+    total = sum(counts.values())
+    labels = {"approved": "Approved", "rejected": "Rejected", "flagged": "Flagged", "pending": "Pending"}
+    categories = [
+        {"key": key, "label": labels[key], "count": count,
+         "percentage": round(count * 100 / total, 1) if total else 0}
+        for key, count in counts.items()
+    ]
+    if total:
+        rounding_remainder = round(100 - sum(item["percentage"] for item in categories), 1)
+        largest_category = max(categories, key=lambda item: item["count"])
+        largest_category["percentage"] = round(largest_category["percentage"] + rounding_remainder, 1)
+
+    current_month = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    month_starts = []
+    for offset in range(-5, 1):
+        month_index = current_month.year * 12 + current_month.month - 1 + offset
+        year, zero_based_month = divmod(month_index, 12)
+        month_starts.append(current_month.replace(year=year, month=zero_based_month + 1))
+    trend_counts = {month.strftime("%Y-%m"): {key: 0 for key in counts} for month in month_starts}
+    trend_rows = db.execute(
+        select(func.date_trunc("month", ActivationRequest.created_at), category_expr, func.count())
+        .where(*scope, ActivationRequest.created_at >= month_starts[0])
+        .group_by(func.date_trunc("month", ActivationRequest.created_at), category_expr)
+    )
+    for month, category, count in trend_rows:
+        trend_counts[month.strftime("%Y-%m")][category] = count
+    trend = [
+        {"month": month.strftime("%Y-%m"), "label": month.strftime("%b %Y"),
+         "counts": trend_counts[month.strftime("%Y-%m")]}
+        for month in month_starts
+    ]
+
+    recent_filters = list(scope)
+    if user.role == "STORE_MANAGER":
+        recent_filters.append(ActivationRequest.status.in_(sm.DECIDED_STATUSES))
+    recent_requests = db.scalars(
+        select(ActivationRequest).where(*recent_filters)
+        .order_by(ActivationRequest.created_at.desc()).limit(5)
+    ).all()
+    recent = [
+        {"request_id": req.request_id, "brand_name": req.brand.brand_name,
+         "store_name": req.store.store_name, "activation_date": req.activation_date.isoformat(),
+         "status": req.status}
+        for req in recent_requests
+    ]
+    return {"period": period, "total": total, "categories": categories, "trend": trend, "recent": recent}
 
 
 # --------------------------------------------------------------------------- audit + notifications

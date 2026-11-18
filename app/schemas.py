@@ -8,7 +8,12 @@ class RegisterIn(pydantic.BaseModel):           # use case: Register (supplier)
     contact: str
     email: pydantic.EmailStr
     full_name: str
+    gender: Literal["MALE", "FEMALE"]
     password: str = pydantic.Field(min_length=8)
+
+
+class SupplierGenderIn(pydantic.BaseModel):
+    gender: Literal["MALE", "FEMALE"]
 
 
 class LoginIn(pydantic.BaseModel):
@@ -20,6 +25,7 @@ class TokenOut(pydantic.BaseModel):
     access_token: str
     token_type: str = "bearer"
     role: str
+    gender: str | None = None
 
 
 class BrandIn(pydantic.BaseModel):

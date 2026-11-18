@@ -5,6 +5,8 @@ again: schema creation and the starter-data seed are idempotent.
 """
 from pathlib import Path
 
+from sqlalchemy import text
+
 from app.config import MODEL_PATH
 from app.database import engine
 from app.models import Base
@@ -13,6 +15,10 @@ from scripts.seed import main as seed_demo_data
 
 def main() -> None:
     Base.metadata.create_all(engine)
+    # create_all does not add columns to existing tables; keep existing demo
+    # databases compatible when supplier profile fields evolve.
+    with engine.begin() as connection:
+        connection.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS gender VARCHAR(10)"))
     seed_demo_data()
 
     model_path = Path(MODEL_PATH)

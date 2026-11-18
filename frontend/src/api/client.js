@@ -42,6 +42,8 @@ async function request(path, { method = "GET", body, token, params } = {}) {
 // ---- auth ------------------------------------------------------------
 export const register = (body) => request("/auth/register", { method: "POST", body });
 export const login = (body) => request("/auth/login", { method: "POST", body });
+export const updateSupplierGender = (body, token) =>
+  request("/auth/profile/gender", { method: "PATCH", body, token });
 
 // ---- reference data ----------------------------------------------------
 export const listStores = (token) => request("/stores", { token });
@@ -66,6 +68,8 @@ export const overrideFlag = (id, body, token) =>
   request(`/requests/${id}/override`, { method: "POST", body, token });
 export const completeRequest = (id, token) =>
   request(`/requests/${id}/complete`, { method: "POST", token });
+export const getReportsSummary = (token, period = "90d") =>
+  request("/reports/summary", { token, params: { period } });
 
 // ---- audit + notifications -----------------------------------------------
 export const auditTrail = (token, requestId) =>
