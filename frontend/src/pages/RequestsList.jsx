@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { listRequests } from "../api/client";
+import { createSupplierInviteCode, listRequests } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
 import StatusBadge from "../components/StatusBadge";
 
@@ -43,13 +43,44 @@ function displayStatus(status) {
 }
 
 export default function RequestsList() {
-  const { token, role } = useAuth();
+  const { token, role, supplierInviteCode, clearSupplierInviteCode } = useAuth();
   const [status, setStatus] = useState("");
   const [query, setQuery] = useState("");
   const [requests, setRequests] = useState(null);
   const [error, setError] = useState("");
+  const [inviteCode, setInviteCode] = useState(supplierInviteCode || "");
+  const [inviteBusy, setInviteBusy] = useState(false);
+  const [inviteMessage, setInviteMessage] = useState("");
   const filters = FILTERS[role] || FILTERS.SUPPLIER;
   const head = HEADS[role] || HEADS.SUPPLIER;
+
+  useEffect(() => {
+    if (supplierInviteCode) setInviteCode(supplierInviteCode);
+  }, [supplierInviteCode]);
+
+  async function createInvite() {
+    setInviteBusy(true);
+    setInviteMessage("");
+    try {
+      const result = await createSupplierInviteCode(token);
+      setInviteCode(result.supplier_invite_code);
+      setInviteMessage("New invite code ready. Any earlier code has been replaced.");
+      clearSupplierInviteCode();
+    } catch (err) {
+      setInviteMessage(err.message || "Could not create an invite code.");
+    } finally {
+      setInviteBusy(false);
+    }
+  }
+
+  async function copyInvite() {
+    try {
+      await navigator.clipboard.writeText(inviteCode);
+      setInviteMessage("Invite code copied. Share it with your teammate.");
+    } catch {
+      setInviteMessage("Copy was blocked by the browser. Select the code and copy it.");
+    }
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -109,6 +140,15 @@ export default function RequestsList() {
           </button>
         ))}
       </section>
+
+      {role === "SUPPLIER" && <section className="team-invite-panel">
+        <span className="team-invite-icon" aria-hidden="true">♧</span>
+        <div className="team-invite-copy"><h2>Work with your supplier team</h2><p>Invite colleagues to share this workspace, manage the same brands, and follow the same requests.</p>
+          {inviteCode && <code className="team-invite-code">{inviteCode}</code>}
+          {inviteMessage && <span className="team-invite-message" role="status">{inviteMessage}</span>}
+        </div>
+        <div className="team-invite-actions">{inviteCode ? <><button type="button" className="secondary" onClick={copyInvite}>Copy code</button><button type="button" className="invite-reset" disabled={inviteBusy} onClick={createInvite}>Replace code</button></> : <button type="button" disabled={inviteBusy} onClick={createInvite}>{inviteBusy ? "Creating…" : "Create invite code"}</button>}</div>
+      </section>}
 
       <section className="request-list-panel">
         <div className="request-list-heading">

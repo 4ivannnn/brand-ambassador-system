@@ -82,6 +82,7 @@ The React front-end lives in `frontend/` and calls the REST API below.
    `python -m scripts.bootstrap`. You can run this again safely.
    The request calendar maintains daily slots from two years ago through two years ahead. Historical dates remain visible for reference but cannot be booked.
    Supplier registration requires a Male/Female gender selection. Existing supplier accounts without a saved selection are prompted to complete their profile after signing in.
+   Suppliers can create a workspace and share its invite code from the supplier dashboard. Teammates choose **Join a team** during registration and enter that code; they then share the workspace's brands, requests, and notifications. Replacing the invite code invalidates the previous one. Manager accounts and permissions are unchanged.
 9. **Start the API:** press **F5** and choose *"API: run FastAPI (debug)"*
     (or run `uvicorn app.main:app --reload`). Open http://127.0.0.1:8000/docs
 10. **Try the whole workflow** in a second terminal: `python -m scripts.demo_flow`

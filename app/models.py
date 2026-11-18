@@ -19,6 +19,7 @@ class Supplier(Base):
     company: Mapped[str] = mapped_column(String(150))
     contact: Mapped[str] = mapped_column(String(20))
     email: Mapped[str] = mapped_column(String(255), unique=True)
+    invite_code_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     users: Mapped[list["User"]] = relationship(back_populates="supplier")

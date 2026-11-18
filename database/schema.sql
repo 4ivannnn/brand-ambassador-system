@@ -28,6 +28,7 @@ CREATE TABLE suppliers (
     company      VARCHAR(150) NOT NULL,
     contact      VARCHAR(20)  NOT NULL,
     email        VARCHAR(255) NOT NULL UNIQUE,
+    invite_code_hash VARCHAR(64),
     created_at   TIMESTAMPTZ  NOT NULL DEFAULT now()
 );
 

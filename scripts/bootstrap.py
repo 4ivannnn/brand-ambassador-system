@@ -19,6 +19,8 @@ def main() -> None:
     # databases compatible when supplier profile fields evolve.
     with engine.begin() as connection:
         connection.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS gender VARCHAR(10)"))
+        connection.execute(text("ALTER TABLE suppliers ADD COLUMN IF NOT EXISTS invite_code_hash VARCHAR(64)"))
+        connection.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS ix_suppliers_invite_code_hash ON suppliers (invite_code_hash)"))
     seed_demo_data()
 
     model_path = Path(MODEL_PATH)

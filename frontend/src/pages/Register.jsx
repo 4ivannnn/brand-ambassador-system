@@ -4,7 +4,7 @@ import { ApiError, register } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
 import GenderSelector from "../components/GenderSelector";
 
-const EMPTY = { company: "", contact: "", email: "", full_name: "", gender: "", password: "" };
+const EMPTY = { company: "", contact: "", email: "", full_name: "", gender: "", password: "", supplier_invite_code: "" };
 
 export default function Register() {
   const { signIn } = useAuth();
@@ -13,6 +13,7 @@ export default function Register() {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [accountMode, setAccountMode] = useState("create");
 
   function set(field) {
     return (e) => setForm({ ...form, [field]: e.target.value });
@@ -31,7 +32,8 @@ export default function Register() {
     setError("");
     setBusy(true);
     try {
-      const data = await register(form);
+      const payload = { ...form, supplier_invite_code: accountMode === "join" ? form.supplier_invite_code.trim() : undefined };
+      const data = await register(payload);
       signIn(data);
       navigate("/", { replace: true });
     } catch (err) {
@@ -45,15 +47,32 @@ export default function Register() {
     <div className="auth-screen register-screen">
       <form className="auth-card register-card" onSubmit={handleSubmit}>
         <div className="brand">Activation Desk</div>
-        <p className="tag">Create your supplier profile to start submitting activation requests.</p>
+        <p className="tag">Create a supplier workspace or join your team to work on requests together.</p>
+
+        <div className="supplier-account-modes" role="group" aria-label="Supplier account type">
+          <button type="button" className={accountMode === "create" ? "active" : ""} onClick={() => setAccountMode("create")} aria-pressed={accountMode === "create"}>Create workspace</button>
+          <button type="button" className={accountMode === "join" ? "active" : ""} onClick={() => setAccountMode("join")} aria-pressed={accountMode === "join"}>Join a team</button>
+        </div>
+        {accountMode === "join" ? (
+          <div className="supplier-join-note">
+            <strong>Joining a supplier team?</strong>
+            <span>Ask a teammate for the invite code from their supplier dashboard. Your team will share brands and requests.</span>
+            <label htmlFor="supplier-invite-code">Supplier invite code</label>
+            <input id="supplier-invite-code" required minLength={12} autoComplete="off" value={form.supplier_invite_code} onChange={set("supplier_invite_code")} placeholder="Paste your team code" />
+          </div>
+        ) : (
+          <div className="supplier-join-note"><strong>Starting a new supplier team?</strong><span>You’ll get an invite code to share with colleagues after creating your account.</span></div>
+        )}
 
         {error && <div className="error-box" role="alert">{error}</div>}
 
-        <label htmlFor="company">Company name</label>
-        <input id="company" required value={form.company} onChange={set("company")} />
+        {accountMode === "create" && <>
+          <label htmlFor="company">Company name</label>
+          <input id="company" required value={form.company} onChange={set("company")} />
 
-        <label htmlFor="contact">Contact phone</label>
-        <input id="contact" required placeholder="07XXXXXXXX" value={form.contact} onChange={set("contact")} />
+          <label htmlFor="contact">Contact phone</label>
+          <input id="contact" required placeholder="07XXXXXXXX" value={form.contact} onChange={set("contact")} />
+        </>}
 
         <label htmlFor="email">Work email</label>
         <input id="email" type="email" required value={form.email} onChange={set("email")} />
@@ -88,7 +107,7 @@ export default function Register() {
         </div>
 
         <button type="submit" disabled={busy}>
-          {busy ? "Creating account…" : "Create account"}
+          {busy ? "Creating account…" : accountMode === "join" ? "Join supplier team" : "Create supplier account"}
         </button>
         <p className="switch-line">
           Already registered? <Link to="/login">Sign in</Link>

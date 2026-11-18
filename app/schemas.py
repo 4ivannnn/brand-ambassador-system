@@ -4,12 +4,13 @@ from typing import Literal
 import pydantic  # pyright: ignore[reportMissingImports]
 
 class RegisterIn(pydantic.BaseModel):           # use case: Register (supplier)
-    company: str
-    contact: str
+    company: str | None = None
+    contact: str | None = None
     email: pydantic.EmailStr
     full_name: str
     gender: Literal["MALE", "FEMALE"]
     password: str = pydantic.Field(min_length=8)
+    supplier_invite_code: str | None = pydantic.Field(None, min_length=12, max_length=80)
 
 
 class SupplierGenderIn(pydantic.BaseModel):
@@ -26,6 +27,7 @@ class TokenOut(pydantic.BaseModel):
     token_type: str = "bearer"
     role: str
     gender: str | None = None
+    supplier_invite_code: str | None = None
 
 
 class BrandIn(pydantic.BaseModel):

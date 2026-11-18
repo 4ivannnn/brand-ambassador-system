@@ -3,7 +3,9 @@
 Run:   uvicorn app.main:app --reload
 Docs:  http://127.0.0.1:8000/docs   (interactive - you can test every endpoint here)
 """
+import hashlib
 import logging
+import secrets
 from contextlib import asynccontextmanager
 from datetime import date, datetime, timedelta, timezone
 
@@ -94,19 +96,47 @@ def load_request(db: Session, request_id: int, user: User) -> ActivationRequest:
 # --------------------------------------------------------------------------- auth
 @app.post("/auth/register", response_model=TokenOut, status_code=201, tags=["Auth"])
 def register(body: RegisterIn, db: Session = Depends(get_db)):
-    """Use case 'Register': creates the supplier company and its first user."""
+    """Create a supplier workspace or add a user to one with its invite code."""
     if db.scalar(select(User).where(User.email == body.email)) or \
        db.scalar(select(Supplier).where(Supplier.email == body.email)):
         raise HTTPException(409, "An account with this email already exists.")
-    supplier = Supplier(company=body.company, contact=body.contact, email=body.email)
-    db.add(supplier)
-    db.flush()
+
+    invite_code = None
+    if body.supplier_invite_code:
+        code_hash = hashlib.sha256(body.supplier_invite_code.strip().encode("utf-8")).hexdigest()
+        supplier = db.scalar(select(Supplier).where(Supplier.invite_code_hash == code_hash))
+        if not supplier:
+            raise HTTPException(400, "That supplier invite code is invalid or has been replaced.")
+    else:
+        if not body.company or not body.contact:
+            raise HTTPException(422, "Company name and contact phone are required to create a supplier workspace.")
+        invite_code = secrets.token_urlsafe(24)
+        invite_hash = hashlib.sha256(invite_code.encode("utf-8")).hexdigest()
+        supplier = Supplier(company=body.company, contact=body.contact, email=body.email,
+                            invite_code_hash=invite_hash)
+        db.add(supplier)
+        db.flush()
+
     user = User(supplier_id=supplier.supplier_id, role="SUPPLIER", full_name=body.full_name,
-                email=body.email, phone=body.contact, gender=body.gender,
+                email=body.email, phone=body.contact or supplier.contact, gender=body.gender,
                 password_hash=security.hash_password(body.password))
     db.add(user)
     db.commit()
-    return TokenOut(access_token=security.create_token(user.user_id), role=user.role, gender=user.gender)
+    return TokenOut(access_token=security.create_token(user.user_id), role=user.role, gender=user.gender,
+                    supplier_invite_code=invite_code)
+
+
+@app.post("/auth/supplier/invite-code", tags=["Auth"])
+def rotate_supplier_invite_code(user: User = Depends(require_role("SUPPLIER")),
+                                db: Session = Depends(get_db)):
+    """Replace this supplier workspace's shared registration invite code."""
+    supplier = db.get(Supplier, user.supplier_id)
+    if not supplier:
+        raise HTTPException(404, "Supplier workspace not found.")
+    code = secrets.token_urlsafe(24)
+    supplier.invite_code_hash = hashlib.sha256(code.encode("utf-8")).hexdigest()
+    db.commit()
+    return {"supplier_invite_code": code}
 
 
 @app.post("/auth/login", response_model=TokenOut, tags=["Auth"])

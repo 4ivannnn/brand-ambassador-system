@@ -44,6 +44,8 @@ export const register = (body) => request("/auth/register", { method: "POST", bo
 export const login = (body) => request("/auth/login", { method: "POST", body });
 export const updateSupplierGender = (body, token) =>
   request("/auth/profile/gender", { method: "PATCH", body, token });
+export const createSupplierInviteCode = (token) =>
+  request("/auth/supplier/invite-code", { method: "POST", token });
 
 // ---- reference data ----------------------------------------------------
 export const listStores = (token) => request("/stores", { token });

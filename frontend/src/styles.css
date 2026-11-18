@@ -229,6 +229,14 @@ main.content { flex: 1; padding: 2.4em clamp(1.4em, 4vw, 3.8em); max-width: 1320
 .profile-completion-intro { max-width: 55ch; color: var(--muted); }
 .profile-completion-panel .gender-fieldset { margin: 1.5em 0; }
 .profile-completion-panel button[type="submit"] { min-width: 190px; }
+.supplier-account-modes { display: grid; grid-template-columns: 1fr 1fr; gap: 0.25em; padding: 0.25em; margin: 1em 0 0.75em; border: 1px solid var(--line); border-radius: 10px; background: #f4f7fb; }
+.supplier-account-modes button { padding: 0.55em 0.7em; border: 0; background: transparent; color: var(--muted); font-size: 0.82rem; }
+.supplier-account-modes button:hover:not(:disabled) { transform: none; background: #e9eff7; color: var(--ink); }
+.supplier-account-modes button.active { background: #fff; color: var(--supplier); box-shadow: 0 2px 7px rgba(23,55,99,0.1); }
+.supplier-join-note { display: grid; gap: 0.2em; margin: 0.65em 0 0.8em; padding: 0.8em 0.9em; border: 1px solid #d8e5f7; border-radius: 10px; background: #f5f9ff; }
+.supplier-join-note strong { color: var(--ink); font-size: 0.82rem; }
+.supplier-join-note > span { color: var(--muted); font-size: 0.75rem; }
+.supplier-join-note label { margin-top: 0.5em; }
 
 /* --------------------------------------------------------- activity workspace */
 .requests-home { display: grid; gap: 1.15em; }
@@ -284,6 +292,17 @@ main.content { flex: 1; padding: 2.4em clamp(1.4em, 4vw, 3.8em); max-width: 1320
 .request-skeletons { display: grid; padding: 0.5em 1.35em; }
 .request-skeletons span { height: 58px; border-bottom: 1px solid #edf1f7; background: linear-gradient(90deg, #f3f6fa 25%, #eaf0f8 45%, #f3f6fa 65%); background-size: 300% 100%; animation: request-loading 1.2s ease-in-out infinite; }
 @keyframes request-loading { to { background-position: -150% 0; } }
+.team-invite-panel { display: flex; align-items: center; gap: 0.9em; padding: 1em 1.2em; border: 1px solid #d8e5f7; border-radius: 13px; background: linear-gradient(110deg, #f6faff 0%, #fff 75%); }
+.team-invite-icon { display: grid; place-items: center; flex: 0 0 42px; height: 42px; border-radius: 13px; background: var(--manager-wash); color: var(--manager); font-size: 1.3rem; }
+.team-invite-copy { display: grid; flex: 1; min-width: 0; gap: 0.16em; }
+.team-invite-copy h2 { margin: 0; font-size: 0.95rem; }
+.team-invite-copy p { margin: 0; color: var(--muted); font-size: 0.76rem; }
+.team-invite-code { width: fit-content; margin-top: 0.35em; padding: 0.35em 0.6em; border: 1px dashed #a9c4e9; border-radius: 7px; background: #fff; color: var(--supplier); font-size: 0.83rem; letter-spacing: 0.04em; overflow-wrap: anywhere; }
+.team-invite-message { color: var(--approved); font-size: 0.72rem; }
+.team-invite-actions { display: flex; flex: 0 0 auto; align-items: center; gap: 0.45em; }
+.team-invite-actions button { font-size: 0.76rem; }
+.team-invite-actions .invite-reset { padding: 0.5em 0.65em; border-color: transparent; background: transparent; color: var(--muted); }
+.team-invite-actions .invite-reset:hover:not(:disabled) { background: #eef3fa; border-color: #dce5f1; color: var(--ink); transform: none; }
 
 .notif-row { display: flex; justify-content: space-between; gap: 1em; padding: 0.8em 0; border-bottom: 1px solid var(--line); }
 .notif-row.unread .msg { font-weight: 600; }
@@ -419,6 +438,9 @@ main.content { flex: 1; padding: 2.4em clamp(1.4em, 4vw, 3.8em); max-width: 1320
   .report-recent-arrow { display: none; }
   .home-hero { align-items: flex-start; flex-direction: column; gap: 0.9em; }
   .home-total { position: absolute; right: 1.3em; bottom: 1.3em; }
+  .team-invite-panel { align-items: flex-start; flex-wrap: wrap; }
+  .team-invite-copy { flex-basis: calc(100% - 60px); }
+  .team-invite-actions { margin-left: 52px; }
   .request-overview { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .overview-card:last-child { grid-column: span 2; }
   .request-list-heading { align-items: flex-start; flex-direction: column; }
