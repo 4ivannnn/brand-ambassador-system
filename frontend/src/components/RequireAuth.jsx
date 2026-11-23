@@ -7,7 +7,7 @@ export default function RequireAuth({ roles, children }) {
   const location = useLocation();
 
   if (!isAuthenticated) return <Navigate to="/login" state={{ from: location }} replace />;
-  if (roles && !roles.includes(role)) return <Navigate to="/" replace />;
+  if (roles && !roles.includes(role)) return <Navigate to="/dashboard" replace />;
   if (role === "SUPPLIER" && !gender && location.pathname !== "/complete-profile") {
     return <Navigate to="/complete-profile" state={{ from: location }} replace />;
   }

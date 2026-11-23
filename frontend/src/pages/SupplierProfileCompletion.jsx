@@ -13,7 +13,7 @@ export default function SupplierProfileCompletion() {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    if (gender) navigate(location.state?.from?.pathname || "/", { replace: true });
+    if (gender) navigate(location.state?.from?.pathname || "/dashboard", { replace: true });
   }, [gender, location.state, navigate]);
 
   async function handleSubmit(event) {

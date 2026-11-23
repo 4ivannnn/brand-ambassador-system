@@ -3,6 +3,7 @@ import { AuthProvider, useAuth } from "./auth/AuthContext";
 import RequireAuth from "./components/RequireAuth";
 import Layout from "./components/Layout";
 import Login from "./pages/Login";
+import Landing from "./pages/Landing";
 import Register from "./pages/Register";
 import RequestsList from "./pages/RequestsList";
 import NewRequest from "./pages/NewRequest";
@@ -15,7 +16,7 @@ import SupplierProfileCompletion from "./pages/SupplierProfileCompletion";
 
 function RedirectIfAuthed({ children }) {
   const { isAuthenticated } = useAuth();
-  return isAuthenticated ? <Navigate to="/" replace /> : children;
+  return isAuthenticated ? <Navigate to="/dashboard" replace /> : children;
 }
 
 export default function App() {
@@ -23,6 +24,7 @@ export default function App() {
     <AuthProvider>
       <BrowserRouter>
         <Routes>
+          <Route path="/" element={<Landing />} />
           <Route path="/login" element={<RedirectIfAuthed><Login /></RedirectIfAuthed>} />
           <Route path="/register" element={<RedirectIfAuthed><Register /></RedirectIfAuthed>} />
 
@@ -41,7 +43,7 @@ export default function App() {
                 </RequireAuth>
               }
             />
-            <Route path="/" element={<RequestsList />} />
+            <Route path="/dashboard" element={<RequestsList />} />
             <Route path="/reports" element={<Reports />} />
             <Route
               path="/requests/new"

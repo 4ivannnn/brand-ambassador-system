@@ -185,7 +185,7 @@ export default function Reports() {
           <section className="report-panel recent-panel">
             <div className="report-panel-heading">
               <div><span className="report-kicker">LATEST ACTIVITY</span><h2>Recent requests</h2></div>
-              <Link className="report-text-link" to="/">View all requests <span aria-hidden="true">→</span></Link>
+        <Link className="report-text-link" to="/dashboard">View all requests <span aria-hidden="true">→</span></Link>
             </div>
             {report.recent.length === 0 ? (
               <p className="report-empty">Your latest requests will show here.</p>

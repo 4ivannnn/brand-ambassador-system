@@ -35,7 +35,7 @@ export default function Register() {
       const payload = { ...form, supplier_invite_code: accountMode === "join" ? form.supplier_invite_code.trim() : undefined };
       const data = await register(payload);
       signIn(data);
-      navigate("/", { replace: true });
+      navigate("/dashboard", { replace: true });
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Could not reach the server.");
     } finally {
