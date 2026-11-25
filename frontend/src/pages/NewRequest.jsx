@@ -4,6 +4,12 @@ import { ApiError, createRequest, listBrands, listSlots, listStores } from "../a
 import { useAuth } from "../auth/AuthContext";
 
 const BLANK_AMBASSADOR = { full_name: "", phone: "", email: "", social_handle: "", followers: "", engagement_rate: "", account_age_days: "" };
+const SAMPLE_AMBASSADORS = [
+  { full_name: "Amina Wanjiku", phone: "0710000101", email: "amina.wanjiku@example.com", social_handle: "@amina.creates", followers: "6800", engagement_rate: "0.042", account_age_days: "920", sample: true },
+  { full_name: "Brian Otieno", phone: "0710000102", email: "brian.otieno@example.com", social_handle: "@brianonthego", followers: "12400", engagement_rate: "0.036", account_age_days: "1180", sample: true },
+  { full_name: "Nia Mwangi", phone: "0710000103", email: "nia.mwangi@example.com", social_handle: "@nia.lifestyle", followers: "9100", engagement_rate: "0.051", account_age_days: "760", sample: true },
+  { full_name: "Kevin Kiptoo", phone: "0710000104", email: "kevin.kiptoo@example.com", social_handle: "@kevinkiptoo", followers: "5300", engagement_rate: "0.039", account_age_days: "640", sample: true },
+];
 
 function toDateInputValue(date) {
   const year = date.getFullYear();
@@ -70,6 +76,26 @@ export default function NewRequest() {
     setAmbassadors((list) => [...list, { ...BLANK_AMBASSADOR }]);
   }
 
+  function addSampleAmbassadors() {
+    const selectedStore = stores.find((store) => String(store.store_id) === String(storeId));
+    const filledCount = ambassadors.filter((ambassador) => ambassador.full_name || ambassador.phone).length;
+    const remaining = Math.max(0, (selectedStore?.ambassador_limit ?? 6) - filledCount);
+    const available = SAMPLE_AMBASSADORS
+      .filter((sample) => !ambassadors.some((ambassador) => ambassador.full_name === sample.full_name))
+      .slice(0, remaining);
+    if (!available.length) return;
+
+    setAmbassadors((list) => {
+      const next = [...list];
+      for (const sample of available) {
+        const emptyIndex = next.findIndex((ambassador) => !ambassador.full_name && !ambassador.phone);
+        if (emptyIndex >= 0) next[emptyIndex] = { ...sample };
+        else next.push({ ...sample });
+      }
+      return next;
+    });
+  }
+
   function removeAmbassador(i) {
     setAmbassadors((list) => list.filter((_, idx) => idx !== i));
   }
@@ -106,14 +132,27 @@ export default function NewRequest() {
   const today = toDateInputValue(new Date());
   const earliestDate = shiftDateByYears(today, -2);
   const latestDate = shiftDateByYears(today, 2);
+  const selectedStore = stores.find((store) => String(store.store_id) === String(storeId));
+  const requiredFields = 4 + ambassadors.length * 2;
+  const completedFields = Number(Boolean(brandId)) + Number(Boolean(storeId)) + Number(Boolean(calendarDate)) + Number(Boolean(slotId)) +
+    ambassadors.reduce((sum, ambassador) => sum + Number(Boolean(ambassador.full_name)) + Number(Boolean(ambassador.phone)), 0);
+  const progress = Math.round(completedFields / requiredFields * 100);
+  const sampleProfilesLeft = SAMPLE_AMBASSADORS.filter((sample) => !ambassadors.some((ambassador) => ambassador.full_name === sample.full_name)).length;
 
   return (
     <>
-      <div className="page-head">
-        <div>
-          <h1>New activation request</h1>
-          <p>Pick a store slot and list the ambassadors who will staff it. You can review and submit on the next screen.</p>
-        </div>
+      <div className="request-builder-hero">
+        <div className="request-builder-copy"><span className="request-builder-kicker">NEW CAMPAIGN REQUEST</span><h1>Build your activation</h1><p>Choose where and when it happens, then add the team who will bring your brand to life.</p></div>
+        <div className="request-progress-card"><div><span>FORM PROGRESS</span><strong>{progress}%</strong></div><div className="request-progress-track"><i style={{ width: `${progress}%` }} /></div><small>{completedFields} of {requiredFields} required details complete</small></div>
+        <span className="request-builder-decoration" aria-hidden="true">✦</span>
+      </div>
+
+      <div className="request-stepper" aria-label="Request steps">
+        <div className="request-step active"><span>1</span><div><b>Activation details</b><small>Brand, store and time</small></div></div>
+        <i aria-hidden="true" />
+        <div className="request-step"><span>2</span><div><b>Ambassador team</b><small>People and profile details</small></div></div>
+        <i aria-hidden="true" />
+        <div className="request-step"><span>3</span><div><b>Review</b><small>Save and check your request</small></div></div>
       </div>
 
       {error && <div className="error-box">{error}</div>}
@@ -122,8 +161,8 @@ export default function NewRequest() {
       )}
 
       <form onSubmit={handleSubmit}>
-        <div className="panel">
-          <h3>Where and when</h3>
+        <div className="panel request-form-panel">
+          <div className="request-section-heading"><span className="request-section-icon">⌖</span><div><h2>Where and when</h2><p>Pick a brand, store and available activation slot.</p></div><span className="request-section-step">STEP 01</span></div>
           <div className="field-row">
             <div>
               <label htmlFor="brand">Brand</label>
@@ -161,7 +200,7 @@ export default function NewRequest() {
               if (event.target.value) setCalendarDate(event.target.value);
             }}
           />
-          <p className="meta" style={{ marginTop: "0.4em" }}>
+          <p className="calendar-helper" style={{ marginTop: "0.4em" }}>
             Calendar range: {earliestDate} to {latestDate}. Past dates and today are shown for reference and cannot be booked.
           </p>
 
@@ -175,20 +214,22 @@ export default function NewRequest() {
             ))}
           </select>
           {storeId && slots.length === 0 && (
-            <p className="meta" style={{ marginTop: "0.5em" }}>No time slots are listed for this date.</p>
+            <p className="slot-empty-hint"><span>ⓘ</span> No time slots are listed for this date. Try another date or store.</p>
           )}
         </div>
 
-        <div className="panel">
-          <div className="page-head" style={{ marginBottom: "0.6em" }}>
-            <h3>Ambassadors ({ambassadors.length})</h3>
-            <button type="button" className="secondary" onClick={addAmbassador}>+ Add ambassador</button>
+        <div className="panel request-form-panel">
+          <div className="request-section-heading"><span className="request-section-icon ambassador-section-icon">♧</span><div><h2>Your ambassador team <span className="team-count">{ambassadors.filter((ambassador) => ambassador.full_name || ambassador.phone).length}</span></h2><p>Add the people who will represent your brand at the activation.</p></div><span className="request-section-step">STEP 02</span></div>
+          <div className="ambassador-tools">
+            <div className="sample-ambassador-prompt"><span className="sample-sparkle">✦</span><span><b>Building a demo?</b><small>Add realistic sample profiles in one click. They’re clearly marked as examples.</small></span></div>
+            <div className="ambassador-tool-buttons"><button type="button" className="secondary sample-add-button" disabled={sampleProfilesLeft === 0 || (selectedStore && ambassadors.filter((a) => a.full_name || a.phone).length >= selectedStore.ambassador_limit)} onClick={addSampleAmbassadors}>✦ Add sample team</button><button type="button" className="add-person-button" onClick={addAmbassador}><span>＋</span> Add person</button></div>
           </div>
 
           {ambassadors.map((a, i) => (
-            <div className="ambassador-card" key={i}>
+            <div className={`ambassador-card enhanced-ambassador-card${a.sample ? " sample-profile" : ""}`} key={i}>
+              <div className="ambassador-card-head"><span className="ambassador-avatar">{a.full_name ? a.full_name.split(/\s+/).map((part) => part[0]).slice(0, 2).join("").toUpperCase() : String(i + 1).padStart(2, "0")}</span><div><b>{a.full_name || `Ambassador ${String(i + 1).padStart(2, "0")}`}</b><small>{a.sample ? "Sample profile · edit before using" : "Team member details"}</small></div>{a.sample && <span className="sample-profile-tag">DEMO</span>}</div>
               {ambassadors.length > 1 && (
-                <button type="button" className="remove" onClick={() => removeAmbassador(i)}>Remove</button>
+                <button type="button" className="remove" aria-label={`Remove ambassador ${a.full_name || i + 1}`} onClick={() => removeAmbassador(i)}>Remove</button>
               )}
               <div className="field-row">
                 <div>
